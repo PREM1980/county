@@ -8,10 +8,10 @@ export default function(props){
     const {gender_chart} = props;
     return(
         <Row>        
-            {/* <Col lg={2}>                  
+            <Col lg={2}>                  
                 Test
-            </Col>             */}
-            {/* <Col lg={10}>                   */}
+            </Col>            
+            <Col lg={10}>                  
                 <Row>                                        
                     <Col lg={12} >              
                         {gender_chart && <Charts gender_chart_options={gender_chart}></Charts>}
@@ -26,7 +26,7 @@ export default function(props){
                         <EmployeeList data={props.data}></EmployeeList>
                     </Col>            
                 </Row>
-            {/* </Col>                   */}
+            </Col>                  
         </Row>
     )
 } 

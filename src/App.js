@@ -61,65 +61,53 @@ class App extends Component {
   }
 
   populate_gender_chart = (data) => {
-    console.log('drilldown this.filter_data -', this.filter_data)
-
-    const options1 = {
+    const filter_data = this.filter_data;
+    var options = {
       chart: {
-        type: 'pie',
-        events: {
-          drilldown: function (e) {
+        type: "pie",        
+        events:{          
+          drilldown: function(e){                        
             console.log('drilldown')
-          }
-        }
+            var filter_by = (e.point.name === 'Female') ? 'F': 'M'            
+            var series = filter_data('gender', data, filter_by)                                    
+            series = _.map(series, function(val){
+              return {
+                name: val.name,
+                data :[[e.point.name, val.y]]
+              }
+            })            
+            this.addSeriesAsDrilldown(e.point, series[0]);            
+          },
+          
+        },
       },
       title: {
-        text: 'Async drilldown'
+        text: 'By Gender'
       },
-      xAxis: {
-        type: 'category'
-      },
-
-      legend: {
-        enabled: false
-      },
-
+      series: [          
+        {
+          name: 'Gender',
+          data: []
+        }
+      ],      
       plotOptions: {
         series: {
-          borderWidth: 0,
-          dataLabels: {
-            enabled: true
-          }
-        }
-      },
-
-      series: [{
-        name: 'Things',
-        colorByPoint: true,
-        data: [{
-          name: 'Animals',
-          y: 5,
-          drilldown: true
-        }, {
-          name: 'Fruits',
-          y: 2,
-          drilldown: true
-        }, {
-          name: 'Cars',
-          y: 4,
-          drilldown: true
-        }]
-      }],
-
-      // drilldown: {
-      //   series: []
-      // }
+            cursor: 'pointer',
+            point: {}
+        },        
+        },    
+      drilldown: {
+         series: []
+        }        
+      }            
+      console.log('options - ', options.series[0])
+      options.series[0].data = this.filter_data('gender', data)
+      this.setState({
+        gender_chart: options
+      })
+      console.log('prem gender_chart options -', this.state.gender_chart)
     }
-
-    // options.series[0].data = this.filter_data('gender', data)
-    this.setState({
-      gender_chart: options1
-    })
-  }
+  
 
 
   filter_data = (filter_by, data, filter_by_value) => {

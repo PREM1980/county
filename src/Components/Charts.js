@@ -59,6 +59,8 @@ const options1 = {
 }
 
 export default function (props) {
+  console.log('options1 - ', props.gender_chart_options)
+  console.log('options1 - ', options1)
   return (
     <Row>
       <Col>
