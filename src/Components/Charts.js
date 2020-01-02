@@ -58,13 +58,11 @@ const options1 = {
   // }
 }
 
-export default function (props) {
-  console.log('options1 - ', props.gender_chart_options)
-  console.log('options1 - ', options1)
+export default function (props) {  
   return (
     <Row>
       <Col>
-        <PieChart highcharts={Highcharts} options={props.gender_chart_options} />
+        <PieChart highcharts={Highcharts} options={props.chart_options} />
         {/* <PieChart highcharts={Highcharts} options={options1} /> */}
 
         {/* <PieChart highcharts={Highcharts} options={options} /> */}

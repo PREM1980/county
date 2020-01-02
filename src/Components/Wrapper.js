@@ -4,8 +4,9 @@ import EmployeeList from './EmployeeList';
 import Charts from './Charts';
 
 export default function(props){
-    console.log(';hhhhhhh', props)
+    // console.log(';hhhhhhh', props)
     const {gender_chart} = props;
+    const {department_chart} = props
     return(
         <Row>        
             <Col lg={2}>                  
@@ -13,13 +14,12 @@ export default function(props){
             </Col>            
             <Col lg={10}>                  
                 <Row>                                        
-                    <Col lg={12} >              
-                        {gender_chart && <Charts gender_chart_options={gender_chart}></Charts>}
+                    <Col lg={6} >              
+                        {gender_chart && <Charts chart_options={gender_chart}></Charts>}
                     </Col>                
-                    {/* <Col lg={4} >              
-                        <Charts chart_options={props.dept_name_chart}></Charts>
-                    </Col>                 */}
-                    
+                    <Col lg={6} >              
+                        {department_chart && <Charts chart_options={department_chart}></Charts>}
+                    </Col>                                    
                 </Row>
                 <Row>
                     <Col lg={12} style={{'overflowX': 'auto'}}>

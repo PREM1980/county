@@ -18,7 +18,7 @@ class App extends Component {
       column_names: [],
       page_num: 1,
       gender_chart: null,
-      dept_name_chart: {}
+      department_chart: null,
     }
   }
 
@@ -56,7 +56,7 @@ class App extends Component {
           column_names: column_names
         }, () => this.populate_gender_chart(data_map))
         
-        // this.populate_department_name_chart(data_map);
+        this.populate_department_name_chart(data_map);
       })
   }
 
@@ -107,6 +107,55 @@ class App extends Component {
       })
       console.log('prem gender_chart options -', this.state.gender_chart)
     }
+
+
+    populate_department_name_chart = (data) => {
+      const filter_data = this.filter_data;
+      var options = {
+        chart: {
+          type: "pie",        
+          events:{          
+            drilldown: function(e){                        
+              console.log('drilldown')
+              var filter_by = e.point.name
+              var series = filter_data('department_name', data, filter_by)                                    
+              series = _.map(series, function(val){
+                return {
+                  name: val.name,
+                  data :[[e.point.name, val.y]]
+                }
+              })            
+              this.addSeriesAsDrilldown(e.point, series[0]);            
+            },
+            
+          },
+        },
+        title: {
+          text: 'By Department'
+        },
+        series: [          
+          {
+            name: 'Department',
+            data: []
+          }
+        ],      
+        plotOptions: {
+          series: {
+              cursor: 'pointer',
+              point: {}
+          },        
+          },    
+        drilldown: {
+           series: []
+          }        
+        }            
+        console.log('options - ', options.series[0])
+        options.series[0].data = this.filter_data('department_name', data)
+        this.setState({
+          department_chart: options
+        })
+        console.log('prem gender_chart options -', this.state.gender_chart)
+      }
   
 
 
@@ -127,9 +176,24 @@ class App extends Component {
         'y': d.length,
         'name': d[0] === 'F' ? 'Female' : 'Male',
         'id': d[0] === 'F' ? 'F' : 'M',
-        // 'drilldown': d[0] === 'F' ? 'Female': 'Male',
-        'drilldown': true
+        'drilldown': d[0] === 'F' ? 'Female': 'Male',
+        // 'drilldown': true
       }));
+    } else {
+      console.log('inside department_name')
+      data = _.map(data, 'department_name')
+
+      if (typeof filter_by_value !== "undefined") {
+        data = _.filter(data, function (val) {
+          return val === filter_by_value;
+        })
+      }
+      result = _.values(_.groupBy(data)).map(d => ({
+        'y': d.length,
+        'name': d[0], 
+        'id': d[0], 
+        'drilldown': d[0] 
+     }))
     }
 
     if (typeof filter_by_value !== "undefined") {
@@ -167,6 +231,7 @@ class App extends Component {
           <Header />
           <Wrapper data={this.state.employee_data}
             gender_chart={this.state.gender_chart}
+            department_chart={this.state.department_chart}
           ></Wrapper>
         </Container>
       </div>
