@@ -4,9 +4,9 @@ import EmployeeList from './EmployeeList';
 import Charts from './Charts';
 
 export default function(props){
-    // console.log(';hhhhhhh', props)
+    const {data} = props;
     const {gender_chart} = props;
-    const {department_chart} = props
+    const {department_chart} = props    
     return(
         <Row>        
             <Col lg={2}>                  
@@ -23,7 +23,7 @@ export default function(props){
                 </Row>
                 <Row>
                     <Col lg={12} style={{'overflowX': 'auto'}}>
-                        <EmployeeList data={props.data}></EmployeeList>
+                        {data && <EmployeeList data={data}></EmployeeList>}
                     </Col>            
                 </Row>
             </Col>                  

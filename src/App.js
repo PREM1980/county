@@ -8,18 +8,26 @@ import './App.css';
 
 let county_data = 'https://data.montgomerycountymd.gov/api/views/kdqy-4wzv/rows.json?accessType=DOWNLOAD'
 
+var filters = []
+
 class App extends Component {
 
   constructor(props) {
     super(props)
     this.state = {
       raw_data: [],
-      employee_data: [],
+      employee_data: null,
       column_names: [],
       page_num: 1,
-      gender_chart: null,
-      department_chart: null,
+      gender_chart_options: null,
+      gender_chart_data: null,
+      department_chart_options: null,
+      department_chart_data: null,
+      filters: []
     }
+    this.drilldown_common = this.drilldown_common.bind(this)
+    // this.populate_drilldown_gender_data = this.populate_drilldown_gender_data(this)
+    this.populate_drilldown_gender_data = this.populate_chart_drilldown_gender_data.bind(this)
   }
 
   componentDidMount = () => {
@@ -51,35 +59,53 @@ class App extends Component {
         })
         let grouped_data_by_chunks = _.chunk(data_map, data_map.length / 100)
         this.setState({
-          raw_data: data_map,
+          data_map: data_map,
           employee_data: grouped_data_by_chunks[0],
           column_names: column_names
-        }, () => this.populate_gender_chart(data_map))
-        
-        this.populate_department_name_chart(data_map);
+        }, () => {
+          this.populate_gender_chart()
+          // this.populate_department_name_chart();
+        })        
       })
   }
 
-  populate_gender_chart = (data) => {
-    const filter_data = this.filter_data;
+  drilldown_common(e, filter){
+    console.log('filter - ', filter)
+    console.log('e - ', e)
+    const filter_by_value = e.point.name === 'Female' ? 'F': 'M'                                                            
+    let key_present = _.filter(filters, {'gender': filter_by_value})
+    if (key_present.length == 0) {
+      let filter_obj = {}
+      filter_obj['gender'] = filter_by_value;
+      filters.push(filter_obj)
+    }
+    console.log('filters - ', filters)
+    let series = this.populate_chart_drilldown_gender_data(e);
+    e.target.addSeriesAsDrilldown(e.point, series[0]);                 
+    
+    console.log('department_chart_options - ', this.department_chart_options)
+    // this.department_chart_options.addSeriesAsDrilldown(e.point, series[0])
+  }
+
+    // series = this.populate_drilldown_gender_data(e);            
+    // console.log('department_chart_options - ', this.department_chart_options)
+    // this.department_chart_options.addSeriesAsDrilldown(e.point, series[0])
+
+
+    // const setfilterstate = this.setfilterstate;
+    // const department_chart_options = this.state.department_chart_options;
+    // const populate_drilldown_gender_data = this.populate_chart_drilldown_gender_data;    
+    // const populate_drilldown_department_data = this.populate_chart_drilldown_department_data;    
+
+  populate_gender_chart = () => {
+
+    const filter_data = this.filter_data;    
     var options = {
       chart: {
         type: "pie",        
-        events:{          
-          drilldown: function(e){                        
-            console.log('drilldown')
-            var filter_by = (e.point.name === 'Female') ? 'F': 'M'            
-            var series = filter_data('gender', data, filter_by)                                    
-            series = _.map(series, function(val){
-              return {
-                name: val.name,
-                data :[[e.point.name, val.y]]
-              }
-            })            
-            this.addSeriesAsDrilldown(e.point, series[0]);            
-          },
-          
-        },
+        events:{                  
+          drilldown: this.drilldown_common('gender')
+        }
       },
       title: {
         text: 'By Gender'
@@ -99,35 +125,63 @@ class App extends Component {
       drilldown: {
          series: []
         }        
-      }            
-      console.log('options - ', options.series[0])
-      options.series[0].data = this.filter_data('gender', data)
+      }         
+      
+      let data = this.filter_data('gender')
+      data = this.chart_format_gender_data(data);
+      options.series[0].data = data;
+
       this.setState({
-        gender_chart: options
+        'gender_chart_options': options
+      }, ()=>{
+        console.log('gender_chart options -', this.state.gender_chart_options); 
       })
-      console.log('prem gender_chart options -', this.state.gender_chart)
+      
+    }    
+
+    populate_chart_drilldown_gender_data = (e) => {                  
+      let data = this.filter_data('gender');      
+      console.log('prem aaa - ', data)
+      data = this.chart_format_gender_data(data)
+      return _.map(data,function(val){
+        return {name: val.name,
+              data: [[e.point.name, val.y]]
+        }
+      })      
     }
 
+    populate_chart_drilldown_department_data = (e) => {
+      let data = this.filter_data('department_name');
+      data = this.chart_format_department_data(data)
+      return _.map(data,function(val){
+        return {name: val.name,
+              data: [[e.point.name, val.y]]
+        }
+      })          
+    }
 
-    populate_department_name_chart = (data) => {
+    populate_department_name_chart = () => {
       const filter_data = this.filter_data;
+      const setfilterstate = this.setfilterstate;
+      const populate_drilldown_gender_data = this.populate_chart_drilldown_gender_data;    
+      const populate_drilldown_department_data = this.populate_chart_drilldown_department_data;    
       var options = {
         chart: {
           type: "pie",        
           events:{          
-            drilldown: function(e){                        
-              console.log('drilldown')
-              var filter_by = e.point.name
-              var series = filter_data('department_name', data, filter_by)                                    
-              series = _.map(series, function(val){
-                return {
-                  name: val.name,
-                  data :[[e.point.name, val.y]]
-                }
-              })            
-              this.addSeriesAsDrilldown(e.point, series[0]);            
-            },
-            
+            drilldown: this.drilldown_common('department_name')
+            // function(e){                        
+            //   console.log('department drilldown')              
+            //   var filter_by_value = e.point.name
+            //   let key_present = _.filter(filters, {'department_name': filter_by_value})
+            //   if (key_present.length == 0) {
+            //     let filter = {}
+            //     filter['department_name'] = filter_by_value;
+            //     filters.push(filter)
+            //   }
+            //   let series = populate_drilldown_department_data(e);
+            //   this.addSeriesAsDrilldown(e.point, series[0]);                          
+            // },            
           },
         },
         title: {
@@ -148,69 +202,68 @@ class App extends Component {
         drilldown: {
            series: []
           }        
-        }            
-        console.log('options - ', options.series[0])
-        options.series[0].data = this.filter_data('department_name', data)
+        }        
+        let data = this.filter_data('department_name')
+        data = this.chart_format_department_data(data);
+        options.series[0].data = data;
         this.setState({
-          department_chart: options
-        })
-        console.log('prem gender_chart options -', this.state.gender_chart)
-      }
-  
+          department_chart_options: options
+        }, ()=>{
+          console.log('prem department state -', this.state)
+        })                
+      }  
 
-
-  filter_data = (filter_by, data, filter_by_value) => {
-    console.log('filter_data filter_by - ', filter_by)
-    var result;
-    if (filter_by === 'gender') {
-      console.log('inside gender')
-      data = _.map(data, 'gender')
-
-      if (typeof filter_by_value !== "undefined") {
-        data = _.filter(data, function (val) {
-          return val === filter_by_value;
-        })
-      }
-
-      result = _.values(_.groupBy(data)).map(d => ({
-        'y': d.length,
-        'name': d[0] === 'F' ? 'Female' : 'Male',
-        'id': d[0] === 'F' ? 'F' : 'M',
-        'drilldown': d[0] === 'F' ? 'Female': 'Male',
-        // 'drilldown': true
-      }));
-    } else {
-      console.log('inside department_name')
-      data = _.map(data, 'department_name')
-
-      if (typeof filter_by_value !== "undefined") {
-        data = _.filter(data, function (val) {
-          return val === filter_by_value;
-        })
-      }
-      result = _.values(_.groupBy(data)).map(d => ({
-        'y': d.length,
-        'name': d[0], 
-        'id': d[0], 
-        'drilldown': d[0] 
-     }))
+  filter_data = (filter) => {    
+    var data = this.state.data_map;
+    // var filters = this.state.filters;
+    console.log('before filter_data - ', data)
+    console.log('filter - ', filter)    
+    console.log('filters - ', filters)    
+    console.log('filters.length - ', filters.length)    
+    if (filters.length > 0) {
+      let combined = _.assign.apply(_, filters)
+      console.log('combined - ', combined)
+      data = _.filter(data, combined)
     }
-
-    if (typeof filter_by_value !== "undefined") {
-      var raw_data = this.state.raw_data;
-      var filters = {}
-      filters[filter_by] = filter_by_value;
-      var data_map = _.filter(raw_data, filters)
-      let grouped_data_by_chunks = _.chunk(data_map, data_map.length / 100)
-      this.setState({
-        'employee_data': grouped_data_by_chunks[0]
-      })
-
+    
+    data = _.map(data, filter)            
+    
+    console.log('after filter_data - ', data)
+    return data
     }
-    console.log('prem result - ', result)
-    return result;
+    
+  chart_format_gender_data = (data) => {
+    data = _.values(_.groupBy(data)).map(d => ({
+      'y': d.length,
+      'name': d[0] === 'F' ? 'Female' : 'Male',
+      'id': d[0] === 'F' ? 'F' : 'M',
+      'drilldown': d[0] === 'F' ? 'Female': 'Male',    
+    }));     
+    return data;
   }
 
+  chart_format_department_data = (data) => {
+    data = _.values(_.groupBy(data)).map(d => ({
+      'y': d.length,
+      'name': d[0], 
+      'id': d[0], 
+      'drilldown': d[0] 
+    }))  
+    return data;
+  }
+      
+    // if (this.state.filters.length > 0) {
+    //   var data_map = this.state.data_map;
+    //   var filters = {}
+    //   filters[filter_by] = filter_by_value;
+    //   data_map = _.filter(raw_data, filters)
+    //   let grouped_data_by_chunks = _.chunk(data_map, data_map.length / 100)
+    //   this.setState({
+    //     'employee_data': grouped_data_by_chunks[0]
+    //   })
+    // }    
+  
+  
   set_employee_data = (filter_by, filter_by_value) => {
     if (typeof filter_by_value !== "undefined") {
       var raw_data = this.state.raw_data;
@@ -224,14 +277,14 @@ class App extends Component {
   }
 
   render() {
-    console.log('render state.gender_chart  - ', this.state.gender_chart)
+    console.log('render state.gender_chart  - ', this.state.gender_chart_options)
     return (
       <div className="App">
         <Container fluid={true}>
           <Header />
           <Wrapper data={this.state.employee_data}
-            gender_chart={this.state.gender_chart}
-            department_chart={this.state.department_chart}
+            gender_chart={this.state.gender_chart_options}
+            department_chart={this.state.department_chart_options}
           ></Wrapper>
         </Container>
       </div>
