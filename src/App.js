@@ -25,9 +25,9 @@ class App extends Component {
       department_chart_data: null,
       filters: []
     }
-    this.drilldown_common = this.drilldown_common.bind(this)
+    // this.drilldown_common = this.drilldown_common.bind(this)
     // this.populate_drilldown_gender_data = this.populate_drilldown_gender_data(this)
-    this.populate_drilldown_gender_data = this.populate_chart_drilldown_gender_data.bind(this)
+    // this.populate_drilldown_gender_data = this.populate_chart_drilldown_gender_data.bind(this)
   }
 
   componentDidMount = () => {
@@ -37,7 +37,6 @@ class App extends Component {
   fetchData = async () => {
     fetch(county_data).then(response => response.json()).
       then(response => {
-        // console.log(response.data)          
         let column_names = _.map(response.meta.view.columns, 'name')
 
         const data_map = response.data.map(data => {
@@ -69,49 +68,51 @@ class App extends Component {
       })
   }
 
-  drilldown_common(e, t, filter){
+  drill_common(e, t, filter, type){
     console.log('filter - ', filter)
     console.log('e - ', e)
     console.log('this - ', t)
-    let filter_by_value = null;
-    if (filter == 'gender'){
-      filter_by_value = e.point.name === 'Female' ? 'F': 'M'                                                            
-    }else{
-      filter_by_value = e.point.name 
-    }    
-    let key_present = _.filter(filters, {filter: filter_by_value})
-    if (key_present.length == 0) {
-      let filter_obj = {}
-      filter_obj[filter] = filter_by_value;
-      filters.push(filter_obj)
-    }
-    console.log('filters - ', filters)
-    if (filter == 'gender'){
-      let series = this.populate_chart_drilldown_gender_data(e);
-      e.target.addSeriesAsDrilldown(e.point, series[0]);                 
-    }else{
-      let series = this.populate_chart_drilldown_department_data(e);
-      e.target.addSeriesAsDrilldown(e.point, series[0]);                 
-    }    
-    console.log('department_chart_options - ', this.department_chart_options)
+    let filter_by_value = null;        
 
-    let data = this.filter_data_map('gender')    
+    if (type == 'down'){
+      if (filter == 'gender'){
+        filter_by_value = e.point.name === 'Female' ? 'F': 'M'                                                            
+      }else{
+        filter_by_value = e.point.name 
+      }    
+      let key_present = _.filter(filters, {filter: filter_by_value})
+      if (key_present.length == 0) {
+        let filter_obj = {}
+        filter_obj[filter] = filter_by_value;
+        filters.push(filter_obj)
+      }
+      if (filter == 'gender'){
+        let series = this.populate_chart_drilldown_gender_data(e);
+        e.target.addSeriesAsDrilldown(e.point, series[0]);                 
+      }else{
+        let series = this.populate_chart_drilldown_department_data(e);
+        e.target.addSeriesAsDrilldown(e.point, series[0]);                 
+      }    
+      console.log('department_chart_options - ', this.department_chart_options)
+    }else{      
+      _.omit(filters, [filter])      
+    }        
+    console.log('filters - ', filters)        
+    let data = this.filter_data_map(filter)    
     let grouped_data_by_chunks = _.chunk(data, data.length / 100)
-
     this.setState({
       'employee_data': grouped_data_by_chunks[0]
     })
 
   }
 
-  populate_gender_chart = () => {
-
-    const filter_data = this.filter_data;    
+  populate_gender_chart = () => {    
     var options = {
       chart: {
         type: "pie",        
         events:{                  
-          drilldown: (e) => this.drilldown_common(e, this, 'gender')
+          drilldown: (e) => this.drill_common(e, this, 'gender', 'down'),
+          drillup: (e) => this.drill_common(e, this, 'gender', 'up'),
         }
       },
       title: {
@@ -132,8 +133,7 @@ class App extends Component {
       drilldown: {
          series: []
         }        
-      }         
-      
+      }               
       let data = this.filter_data_map()
       data = _.map(data, 'gender')   
       data = this.chart_format_gender_data(data);
@@ -143,12 +143,11 @@ class App extends Component {
         'gender_chart_options': options
       }, ()=>{
         console.log('gender_chart options -', this.state.gender_chart_options); 
-      })
-      
+      })      
     }    
 
     populate_chart_drilldown_gender_data = (e) => {                  
-      let data = this.filter_data_map('gender');      
+      let data = this.filter_data_map();      
       data = _.map(data, 'gender') 
       data = this.chart_format_gender_data(data)
       return _.map(data,function(val){
@@ -159,7 +158,7 @@ class App extends Component {
     }
 
     populate_chart_drilldown_department_data = (e) => {
-      let data = this.filter_data_map('department_name');
+      let data = this.filter_data_map();
       data = _.map(data, 'department_name')   
       data = this.chart_format_department_data(data)
       return _.map(data,function(val){
@@ -174,7 +173,8 @@ class App extends Component {
         chart: {
           type: "pie",        
           events:{          
-            drilldown: (e) => this.drilldown_common(e, this, 'department_name')            
+            drilldown: (e) => this.drill_common(e, this, 'department_name', 'down'),            
+            drillup: (e) => this.drill_common(e, this, 'department_name', 'up')            
           },
         },
         title: {
@@ -240,21 +240,7 @@ class App extends Component {
       'drilldown': d[0] 
     }))  
     return data;
-  }
-    
-  // filter_column_data = () => {
-  //   if (this.state.filters.length > 0) {
-  //     var data_map = this.state.data_map;
-  //     var filters = {}
-  //     filters[filter_by] = filter_by_value;
-  //     data_map = _.filter(raw_data, filters)
-  //     let grouped_data_by_chunks = _.chunk(data_map, data_map.length / 100)
-  //     this.setState({
-  //       'employee_data': grouped_data_by_chunks[0]
-  //     })
-  //   }    
-  // }
-  
+  }  
   
   set_employee_data = (filter_by, filter_by_value) => {
     if (typeof filter_by_value !== "undefined") {
