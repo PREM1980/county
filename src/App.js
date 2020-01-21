@@ -60,7 +60,9 @@ class App extends Component {
         this.setState({
           data_map: data_map,
           employee_data: grouped_data_by_chunks[0],
-          column_names: column_names
+          column_names: column_names,
+          uniq_gender: _.uniq(_.map(data_map, 'gender')),
+          uniq_dept_name: _.uniq(_.map(data_map, 'department_name')),
         }, () => {
           this.populate_gender_chart()
           this.populate_department_name_chart();
