@@ -3,6 +3,7 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import { Container, } from 'react-bootstrap';
 import Header from './Components/Header';
 import Wrapper from './Components/Wrapper';
+import Highcharts from 'highcharts/highstock';
 import _ from 'lodash';
 import './App.css';
 
@@ -28,6 +29,7 @@ class App extends Component {
     // this.drilldown_common = this.drilldown_common.bind(this)
     // this.populate_drilldown_gender_data = this.populate_drilldown_gender_data(this)
     // this.populate_drilldown_gender_data = this.populate_chart_drilldown_gender_data.bind(this)
+    this.onItemClickHandler = this.onFilterClickHandler.bind(this)
   }
 
   componentDidMount = () => {
@@ -61,8 +63,8 @@ class App extends Component {
           data_map: data_map,
           employee_data: grouped_data_by_chunks[0],
           column_names: column_names,
-          uniq_gender: _.uniq(_.map(data_map, 'gender')),
-          uniq_dept_name: _.uniq(_.map(data_map, 'department_name')),
+          uniq_gender: _.countBy(data_map, 'gender'),
+          uniq_dept_name: _.countBy(data_map, 'department_name'),
         }, () => {
           this.populate_gender_chart()
           this.populate_department_name_chart();
@@ -105,7 +107,6 @@ class App extends Component {
     this.setState({
       'employee_data': grouped_data_by_chunks[0]
     })
-
   }
 
   populate_gender_chart = () => {    
@@ -135,17 +136,8 @@ class App extends Component {
       drilldown: {
          series: []
         }        
-      }               
-      let data = this.filter_data_map()
-      data = _.map(data, 'gender')   
-      data = this.chart_format_gender_data(data);
-      options.series[0].data = data;
-
-      this.setState({
-        'gender_chart_options': options
-      }, ()=>{
-        console.log('gender_chart options -', this.state.gender_chart_options); 
-      })      
+      }
+    this.set_chart_data(options, 'gender', false)                        
     }    
 
     populate_chart_drilldown_gender_data = (e) => {                  
@@ -198,50 +190,104 @@ class App extends Component {
            series: []
           }        
         }        
-        let data = this.filter_data_map()
-        data = _.map(data, 'department_name')   
-        data = this.chart_format_department_data(data);
-        options.series[0].data = data;
-        this.setState({
-          department_chart_options: options
-        }, ()=>{
-          console.log('prem department state -', this.state)
-        })                
+        this.set_chart_data(options, 'department_name', false)              
       }  
+  
+  set_chart_data = (options, type, reset) => {
+    
+    let data = this.filter_data_map()
+    
+    data = _.map(data, type)   
+    console.log('this.state.gender_chart_options - ', this.state)
+    
+    if (type === 'gender'){
+      data = this.chart_format_gender_data(data);
+    }else{
+      data = this.chart_format_department_data(data);
+    }
+    
+    if (reset){
+      options = this.state.gender_chart_options;
+      options = new Highcharts.Chart(options)      
+      console.log('reset options - ', options.series[0])
+      console.log('reset options-1 - ', Object.getOwnPropertyNames(options.series[0]))
+      console.log('reset options-2 - ', Object.prototype.toString.call(options.series[0]))
+      
+      // options.series[0].data.length = 0
+      options.series[0].setData(data);
+      }
+    else{
+        options.series[0].data = data;
+      }                
+    var chart_options = type + '_chart_options';
+
+    this.setState({
+      [chart_options]: options
+    }, ()=>{
+      console.log('chart options -', this.state); 
+    })      
+  }
+
+  set_department_chart = (options, reset) => {
+    let data = this.filter_data_map()
+    data = _.map(data, 'department_name')   
+    data = this.chart_format_department_data(data);
+
+    if (reset){
+      options = this.state.gender_chart_options;
+    }
+
+    options.series[0].data = data;
+    this.setState({
+      department_chart_options: options
+    }, ()=>{
+      console.log('prem department state -', this.state)
+    })
+  }
 
   filter_data_map = () => {    
     var data = this.state.data_map;
-    console.log('before filter_data - ', data)    
-    console.log('filters - ', filters)    
-    console.log('filters.length - ', filters.length)    
-    if (filters.length > 0) {
-      let combined = _.assign.apply(_, filters)
-      console.log('combined - ', combined)
-      data = _.filter(data, combined)
-    }    
-    
-    console.log('after filter_data - ', data)
-    return data
-    }
-    
-  chart_format_gender_data = (data) => {
-    data = _.values(_.groupBy(data)).map(d => ({
-      'y': d.length,
-      'name': d[0] === 'F' ? 'Female' : 'Male',
-      'id': d[0] === 'F' ? 'F' : 'M',
-      'drilldown': d[0] === 'F' ? 'Female': 'Male',    
-    }));     
-    return data;
-  }
 
-  chart_format_department_data = (data) => {
-    data = _.values(_.groupBy(data)).map(d => ({
-      'y': d.length,
-      'name': d[0], 
-      'id': d[0], 
-      'drilldown': d[0] 
-    }))  
-    return data;
+    // if (filters.length > 0) {
+    //   let combined = _.assign.apply(_, filters)
+    //   console.log('combined - ', combined)
+    //   data = _.filter(data, combined)
+    // }    
+    if (filters.length > 0){
+    data = _.filter(data,			
+      function(row){
+        let found = false;
+        _.forEach(filters,function(filter){
+          if (_.filter([row], filter).length != 0){
+              found = true;
+          }}          
+        )
+        return found;
+      })   
+    }
+    console.log('filter_data_map - ', data)
+    return data
+  }
+    
+    chart_format_gender_data = (data) => {
+      data = _.values(_.groupBy(data)).map(d => ({
+        'y': d.length,
+        'name': d[0] === 'F' ? 'Female' : 'Male',
+        'id': d[0] === 'F' ? 'F' : 'M',
+        'drilldown': d[0] === 'F' ? 'Female': 'Male',    
+      }));     
+      return data;
+      console.log('chart_format_gender_data - ', data);
+    }
+
+    chart_format_department_data = (data) => {
+      data = _.values(_.groupBy(data)).map(d => ({
+        'y': d.length,
+        'name': d[0], 
+        'id': d[0], 
+        'drilldown': d[0] 
+      }))  
+      return data;
   }  
   
   set_employee_data = (filter_by, filter_by_value) => {
@@ -249,11 +295,28 @@ class App extends Component {
       var raw_data = this.state.raw_data;
       var filters = {}
       filters[filter_by] = filter_by_value;
-
       this.setState({
         'group_by_gender_data': _.filter(raw_data, filters)
       })
     }
+  }
+
+  onFilterClickHandler(e, filter){
+    console.log('item clicked - ', e.target.value)
+    console.log('item checked - ', e.target.checked)    
+    if (e.target.checked){
+      let filter_obj = {}
+      filter_obj[filter] = e.target.value;
+      filters.push(filter_obj)
+    }else{
+      let filter_obj = {}
+      filter_obj[filter] = e.target.value;
+      _.remove(filters, filter_obj)
+    }
+    console.log('filters - ', filters)
+    this.set_chart_data(null, 'gender', true)              
+    // this.set_chart_data(null, 'department_name', true)              
+    // https://stackoverflow.com/questions/46805086/change-series-data-dynamically-in-react-highcharts-without-re-render-of-the-char
   }
 
   render() {
@@ -262,9 +325,12 @@ class App extends Component {
       <div className="App">
         <Container fluid={true}>
           <Header />
-          <Wrapper data={this.state.employee_data}
-            gender_chart={this.state.gender_chart_options}
-            department_chart={this.state.department_chart_options}
+          <Wrapper gender_chart={this.state.gender_chart_options}
+            department_chart={this.state.department_name_chart_options}
+            data={this.state.employee_data}
+            uniq_gender={this.state.uniq_gender}
+            onFilterClickHandler={this.onItemClickHandler}
+            uniq_dept_name={this.state.uniq_dept_name}
           ></Wrapper>
         </Container>
       </div>
