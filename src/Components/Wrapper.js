@@ -39,7 +39,7 @@ export default function(props){
                     return (
                     <div>
                         <label>
-                            <input type="checkbox" value={key} onClick={() => onFilterClickHandler('department_name')}/> 
+                            <input type="checkbox" value={key} onClick={(e) => onFilterClickHandler(e, 'department_name')}/> 
                             <span>&nbsp;{key}   </span>
                             <span>({value})</span>
                         </label>

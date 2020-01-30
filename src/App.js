@@ -1,3 +1,5 @@
+/* global gapi */
+
 import React, { Component } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Container, } from 'react-bootstrap';
@@ -9,7 +11,9 @@ import './App.css';
 
 let county_data = 'https://data.montgomerycountymd.gov/api/views/kdqy-4wzv/rows.json?accessType=DOWNLOAD'
 
-var filters = []
+var filters = {'gender': [],
+            'department_name': []}
+            
 
 class App extends Component {
 
@@ -24,11 +28,10 @@ class App extends Component {
       gender_chart_data: null,
       department_chart_options: null,
       department_chart_data: null,
-      filters: []
+      filters: [],
+      isSignedIn: false,
     }
-    // this.drilldown_common = this.drilldown_common.bind(this)
-    // this.populate_drilldown_gender_data = this.populate_drilldown_gender_data(this)
-    // this.populate_drilldown_gender_data = this.populate_chart_drilldown_gender_data.bind(this)
+
     this.onItemClickHandler = this.onFilterClickHandler.bind(this)
   }
 
@@ -62,6 +65,7 @@ class App extends Component {
         this.setState({
           data_map: data_map,
           employee_data: grouped_data_by_chunks[0],
+          // employee_data: data_map,
           column_names: column_names,
           uniq_gender: _.countBy(data_map, 'gender'),
           uniq_dept_name: _.countBy(data_map, 'department_name'),
@@ -73,9 +77,6 @@ class App extends Component {
   }
 
   drill_common(e, t, filter, type){
-    console.log('filter - ', filter)
-    console.log('e - ', e)
-    console.log('this - ', t)
     let filter_by_value = null;        
 
     if (type == 'down'){
@@ -195,30 +196,27 @@ class App extends Component {
   
   set_chart_data = (options, type, reset) => {
     
-    let data = this.filter_data_map()
-    
-    data = _.map(data, type)   
-    console.log('this.state.gender_chart_options - ', this.state)
-    
+    let data = this.filter_data_map()    
+    data = _.map(data, type)        
     if (type === 'gender'){
       data = this.chart_format_gender_data(data);
     }else{
       data = this.chart_format_department_data(data);
-    }
-    
+    }    
     if (reset){
-      options = this.state.gender_chart_options;
-      options = new Highcharts.Chart(options)      
-      console.log('reset options - ', options.series[0])
-      console.log('reset options-1 - ', Object.getOwnPropertyNames(options.series[0]))
-      console.log('reset options-2 - ', Object.prototype.toString.call(options.series[0]))
-      
-      // options.series[0].data.length = 0
-      options.series[0].setData(data);
+      options = this.state.gender_chart_options;              
+      options = {
+        series:[
+          {
+            data: data
+          }
+          ]
+        }
       }
     else{
-        options.series[0].data = data;
-      }                
+      options.series[0].data = data;
+    }                
+    
     var chart_options = type + '_chart_options';
 
     this.setState({
@@ -247,25 +245,51 @@ class App extends Component {
 
   filter_data_map = () => {    
     var data = this.state.data_map;
+    // data = data.slice(0, 1000)        
 
-    // if (filters.length > 0) {
-    //   let combined = _.assign.apply(_, filters)
-    //   console.log('combined - ', combined)
-    //   data = _.filter(data, combined)
-    // }    
-    if (filters.length > 0){
-    data = _.filter(data,			
-      function(row){
-        let found = false;
-        _.forEach(filters,function(filter){
-          if (_.filter([row], filter).length != 0){
-              found = true;
-          }}          
-        )
-        return found;
-      })   
+    var predicate = function(args, filter) {
+      return function(user) {
+        var equalToUser = _.partial(_.isEqual, user[filter]);
+        return args.some(equalToUser);
+      }
     }
-    console.log('filter_data_map - ', data)
+    console.log('before filter_data_map - ', data)
+    console.log('filter_data_map before - ', filters)
+    
+    if (!_.isEmpty(_.pickBy(filters, (item) => item.length > 0))) {
+      data = _.filter(data,			
+        function(row){
+          let result = []
+          _.forEach(filters,function(value, key){
+            let args = Object.values(value)
+            if (args.length > 0){
+              r = _.filter([row], predicate(args, key))
+              var r = r.length > 0 ? true : false ;
+              result.push(r)     
+            }else{
+              result.push(true)     
+            }
+
+            }
+          )
+  
+          return _.every(result)
+        })
+        console.log('filter_data_map after - ', data)
+        console.log('filter_data_map count_by_gender after - ', _.countBy(data, 'gender'))
+      // this.setState({
+      //   // uniq_gender: _.countBy(data, 'gender'),
+      //   uniq_dept_name: _.countBy(data, 'department_name'),
+      // })
+      let grouped_data_by_chunks = _.chunk(data, data.length / 100)
+        this.setState({
+            'employee_data': grouped_data_by_chunks[0]
+        })
+        
+  
+      }
+    
+    console.log('after filter_data_map - ', data)
     return data
   }
     
@@ -276,8 +300,7 @@ class App extends Component {
         'id': d[0] === 'F' ? 'F' : 'M',
         'drilldown': d[0] === 'F' ? 'Female': 'Male',    
       }));     
-      return data;
-      console.log('chart_format_gender_data - ', data);
+      return data;      
     }
 
     chart_format_department_data = (data) => {
@@ -302,37 +325,39 @@ class App extends Component {
   }
 
   onFilterClickHandler(e, filter){
-    console.log('item clicked - ', e.target.value)
-    console.log('item checked - ', e.target.checked)    
-    if (e.target.checked){
-      let filter_obj = {}
-      filter_obj[filter] = e.target.value;
-      filters.push(filter_obj)
+    console.log('onfilterclickhandler', filter)
+    console.log(_.get(filters, filter))
+    // console.log('onfilterclickhandler', filters[0][filter])
+    var obj = _.get(filters, filter)      
+    if (e.target.checked){        
+      obj.push(e.target.value)
     }else{
-      let filter_obj = {}
-      filter_obj[filter] = e.target.value;
-      _.remove(filters, filter_obj)
+      // console.log('remove onfilterclickhandler', filters[0][filter])
+      _.pull(obj, e.target.value)
     }
     console.log('filters - ', filters)
-    this.set_chart_data(null, 'gender', true)              
-    // this.set_chart_data(null, 'department_name', true)              
+    this.set_chart_data(null, 'gender', true)
+    this.set_chart_data(null, 'department_name', true)              
     // https://stackoverflow.com/questions/46805086/change-series-data-dynamically-in-react-highcharts-without-re-render-of-the-char
   }
-
+    
   render() {
-    console.log('render state.gender_chart  - ', this.state.gender_chart_options)
+    // console.log('render state.gender_chart  - ', this.state.gender_chart_options)
     return (
-      <div className="App">
+      <div className="App">        
+        <header className="App-header">  
         <Container fluid={true}>
           <Header />
-          <Wrapper gender_chart={this.state.gender_chart_options}
-            department_chart={this.state.department_name_chart_options}
-            data={this.state.employee_data}
-            uniq_gender={this.state.uniq_gender}
-            onFilterClickHandler={this.onItemClickHandler}
-            uniq_dept_name={this.state.uniq_dept_name}
-          ></Wrapper>
-        </Container>
+            <Wrapper gender_chart={this.state.gender_chart_options}
+              department_chart={this.state.department_name_chart_options}
+              data={this.state.employee_data}
+              uniq_gender={this.state.uniq_gender}
+              onFilterClickHandler={this.onItemClickHandler}
+              uniq_dept_name={this.state.uniq_dept_name}
+            ></Wrapper>
+          </Container>
+        </header>
+      
       </div>
     );
   }
